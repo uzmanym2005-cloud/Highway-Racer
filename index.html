@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>Highway Racer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="gameWrap">
+    <canvas id="gameCanvas" width="900" height="1400" aria-label="Highway Racer canvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="ui">
+      <div id="scoreboard">
+        <div>Score: <span id="score">0</span></div>
+        <div>High: <span id="highScore">0</span></div>
+      </div>
+
+      <div id="controls">
+        <button id="startBtn" class="btn">Start Game</button>
+        <button id="pauseBtn" class="btn">Pause</button>
+        <button id="restartBtn" class="btn">Restart</button>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="overlay">
+      <div class="card">
+        <h1>Highway Racer</h1>
+        <p>Drive between lanes, avoid cars, and survive as long as you can.</p>
+        <div class="actions">
+          <button id="startFromScreen" class="btn primary">Start</button>
+          <button id="showHow" class="btn">How to Play</button>
+        </div>
+        <div class="credits">Made with HTML5 Canvas • No libraries</div>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="overlay hidden">
+      <div class="card">
+        <h2>Game Over</h2>
+        <p>Your Score: <span id="finalScore">0</span></p>
+        <p>High Score: <span id="finalHigh">0</span></p>
+        <div class="actions">
+          <button id="restartFromOver" class="btn primary">Play Again</button>
+          <button id="backToStart" class="btn">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile touch controls -->
+    <div id="touchControls">
+      <div id="leftTouch" class="touchBtn">◀</div>
+      <div id="rightTouch" class="touchBtn">▶</div>
+    </div>
+
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
