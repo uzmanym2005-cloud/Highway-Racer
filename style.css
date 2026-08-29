@@ -1,0 +1,177 @@
+/* style.css - Highway Racer
+   Modern racing style, responsive layout and touch controls.
+*/
+
+:root{
+  --bg:#0b1320;
+  --road:#1f2933;
+  --stripe:#f1f5f9;
+  --accent:#ff3b3b;
+  --panel: rgba(255,255,255,0.06);
+  --glass: rgba(255,255,255,0.06);
+  --text:#e6eef6;
+  --muted:#9fb1c8;
+  --shadow: 0 8px 20px rgba(3,7,18,0.6);
+  --btn-h: #1f6feb;
+}
+
+/* Page layout */
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent}
+html,body{
+  height:100%;
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(255,80,80,0.05), transparent 10%),
+    linear-gradient(180deg, #071025 0%, #091826 60%);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+/* Game wrapper */
+#gameWrap{
+  width: min(920px, 96vw);
+  max-width: 1000px;
+  position:relative;
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow: var(--shadow);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+
+/* Canvas stretches to wrapper width while JS handles drawing resolution */
+#gameCanvas{
+  display:block;
+  width:100%;
+  height: auto;
+  background: transparent;
+  cursor: none;
+  display:block;
+}
+
+/* UI overlay */
+#ui{
+  position:absolute;
+  top:12px;
+  left:12px;
+  right:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  pointer-events:none;
+}
+
+#scoreboard{
+  background:var(--panel);
+  padding:8px 12px;
+  border-radius:10px;
+  display:flex;
+  gap:10px;
+  font-weight:600;
+  font-size:14px;
+  color:var(--text);
+  pointer-events:auto;
+  box-shadow: 0 6px 16px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+#controls{
+  pointer-events:auto;
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+
+/* Buttons */
+.btn{
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.06);
+  color:var(--text);
+  padding:8px 12px;
+  border-radius:8px;
+  font-weight:600;
+  font-size:13px;
+  transition:all .18s ease;
+  cursor:pointer;
+  box-shadow: none;
+}
+.btn:hover{ transform:translateY(-3px); box-shadow: 0 6px 20px rgba(3,7,18,0.4)}
+.btn.primary{
+  background:linear-gradient(180deg,var(--btn-h), #215fcf);
+  border: none;
+  color:white;
+  box-shadow: 0 8px 18px rgba(33,95,207,0.18);
+}
+
+/* Overlay screens */
+.overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(180deg, rgba(3,6,12,0.45), rgba(3,6,12,0.55));
+  z-index:10;
+  pointer-events:auto;
+}
+.overlay.hidden{ display:none; pointer-events:none }
+
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border-radius:12px;
+  padding:26px;
+  width:min(520px,92%);
+  text-align:center;
+  box-shadow: 0 12px 40px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.card h1{ margin:6px 0 6px; font-size:30px; letter-spacing:0.6px }
+.card p{ color:var(--muted); margin:12px 0 18px }
+
+/* Start/GameOver actions */
+.actions{ display:flex; gap:12px; justify-content:center; margin-top:10px; flex-wrap:wrap; }
+.credits{ font-size:12px; color:var(--muted); margin-top:12px }
+
+/* Mobile touch controls */
+#touchControls{
+  position:absolute;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  width:70%;
+  display:flex;
+  justify-content:space-between;
+  z-index:20;
+  pointer-events:none;
+}
+.touchBtn{
+  width:46%;
+  padding:18px 0;
+  border-radius:12px;
+  text-align:center;
+  font-size:22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.04);
+  color:var(--text);
+  user-select:none;
+  pointer-events:auto;
+  touch-action: manipulation;
+  -webkit-user-select:none;
+}
+
+/* smaller screens adjustments */
+@media (max-width:600px){
+  #gameWrap{ width:100vw; border-radius:0; height:100vh }
+  #touchControls{ width:92%; bottom:8px }
+  .card{ padding:18px }
+  .card h1{ font-size:22px }
+}
+
+/* simple fade and slide for feedback */
+.fadeIn{ animation: fadeIn .4s ease both }
+@keyframes fadeIn{ from{ opacity:0; transform:translateY(6px)} to{opacity:1; transform:none } }
