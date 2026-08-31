@@ -1,41 +1,52 @@
-/* game.js - Highway Racer
-   Vanilla JS + Canvas. Organized using classes and clear functions.
-   Features: responsive canvas, keyboard + touch controls, enemy spawn, collisions,
-   score/high-score with localStorage, start/pause/restart, simple animations.
+/* game.js - Highway Racer (responsive canvas & centered road)
+   Key change: robust canvas scaling to fit the wrapper while preserving virtual coords.
 */
 
 /* -------- Global constants and helpers -------- */
 const STORAGE_KEY = 'HighwayRacer_highScore_v1';
-
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /* -------- Canvas setup and scaling -------- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 
-let DPR = window.devicePixelRatio || 1;
-let vw = 450;   // virtual width for drawing (portrait)
-let vh = 780;   // virtual height for drawing
+// virtual coordinate system (what game logic uses)
+let vw = 450;   // virtual width
+let vh = 780;   // virtual height
+
+// runtime scale/offset so virtual units map into the canvas pixels
+let SCALE = 1;
+let OFFSET_X = 0;
+let OFFSET_Y = 0;
 
 function resizeCanvasToDisplay() {
-  // Fit canvas width to container while preserving aspect ratio
+  // measure CSS size of canvas
   const rect = canvas.getBoundingClientRect();
-  const targetCSSW = rect.width;
-  const targetCSSH = (targetCSSW * vh) / vw;
-  canvas.style.height = `${targetCSSH}px`;
+  const cssWidth = Math.max(160, rect.width);   // guard minimum
+  const cssHeight = Math.max(200, rect.height);
 
-  DPR = window.devicePixelRatio || 1;
-  canvas.width = Math.round(targetCSSW * DPR);
-  canvas.height = Math.round(targetCSSH * DPR);
-  ctx.setTransform(DPR * (canvas.width / (targetCSSW * DPR)), 0, 0, DPR * (canvas.width / (targetCSSW * DPR)), 0, 0);
-  // We'll scale drawing coordinates to [0..vw] x [0..vh]
+  const DPR = window.devicePixelRatio || 1;
+  // set backing buffer size in device pixels
+  canvas.width = Math.round(cssWidth * DPR);
+  canvas.height = Math.round(cssHeight * DPR);
+
+  // compute scale to fit virtual viewport inside the pixel buffer (preserve aspect)
+  const scaleX = canvas.width / vw;
+  const scaleY = canvas.height / vh;
+  SCALE = Math.min(scaleX, scaleY);
+
+  // compute pixel offsets to center the virtual viewport inside buffer
+  OFFSET_X = Math.round((canvas.width - vw * SCALE) / 2);
+  OFFSET_Y = Math.round((canvas.height - vh * SCALE) / 2);
+
+  // apply transform so that draw() can use virtual coordinates directly
+  ctx.setTransform(SCALE, 0, 0, SCALE, OFFSET_X, OFFSET_Y);
+
+  // set image smoothing off for crisp look on some devices
+  ctx.imageSmoothingEnabled = false;
 }
 
-/* Map from virtual coords to actual canvas pixel coords */
-function screenScaleX(x) { return (x / vw) * canvas.width / DPR; }
-function screenScaleY(y) { return (y / vh) * canvas.height / DPR; }
-
-/* -------- Game Entities -------- */
+/* -------- Game Entities (unchanged logic but use virtual coords) -------- */
 class Player {
   constructor(game) {
     this.game = game;
@@ -43,7 +54,7 @@ class Player {
     this.height = 90;
     this.x = vw / 2 - this.width / 2;
     this.y = vh - this.height - 28;
-    this.speed = 6;    // lateral speed
+    this.speed = 6;
     this.color = '#20c997';
     this.dead = false;
   }
@@ -58,19 +69,13 @@ class Player {
     if (input.left) dir -= 1;
     if (input.right) dir += 1;
     this.x += dir * this.speed;
-    // keep inside road boundaries (game provides left/right)
     this.x = clamp(this.x, this.game.road.left + 8, this.game.road.right - this.width - 8);
   }
   draw(ctx) {
-    // Draw a stylized car with layered shapes
     const x = this.x, y = this.y, w = this.width, h = this.height;
-    // body shadow
     roundRect(ctx, x+2, y+6, w, h, 8, '#071125');
-    // main body
     roundRect(ctx, x, y, w, h, 8, this.color);
-    // windows
     roundRect(ctx, x+10, y+12, w-20, h/2.8, 6, 'rgba(255,255,255,0.12)');
-    // lights
     ctx.fillStyle = '#fff4';
     ctx.fillRect(x+8, y+h-12, 8, 4);
     ctx.fillRect(x+w-16, y+h-12, 8, 4);
@@ -84,22 +89,16 @@ class Enemy {
     this.height = 92;
     this.x = x;
     this.y = -this.height - (Math.random()*80);
-    this.speed = speed; // vertical speed
+    this.speed = speed;
     this.color = randomColor();
-    this.passed = false; // whether player has passed it
+    this.passed = false;
   }
-  update(dt) {
-    this.y += this.speed;
-  }
+  update(dt) { this.y += this.speed; }
   draw(ctx) {
     const x = this.x, y = this.y, w = this.width, h = this.height;
-    // drop shadow
     roundRect(ctx, x+3, y+8, w, h, 8, 'rgba(0,0,0,0.35)');
-    // body
     roundRect(ctx, x, y, w, h, 8, this.color);
-    // window
     roundRect(ctx, x+8, y+14, w-16, h/3.2, 5, 'rgba(255,255,255,0.12)');
-    // bumper accent
     ctx.fillStyle = 'rgba(255,255,255,0.06)';
     ctx.fillRect(x+6, y+h-14, w-12, 6);
   }
@@ -109,35 +108,29 @@ class Enemy {
 class Road {
   constructor(game) {
     this.game = game;
-    // define road bounds in virtual coordinates
     this.left = 36;
     this.right = vw - 36;
     this.center = vw / 2;
     this.laneCount = 3;
     this.laneWidth = (this.right - this.left) / this.laneCount;
-    this.offset = 0; // for animated scrolling
+    this.offset = 0;
   }
-  update(dt, speed) {
-    this.offset = (this.offset + speed * 0.6) % 24;
-  }
+  update(dt, speed) { this.offset = (this.offset + speed * 0.6) % 24; }
   draw(ctx) {
-    // road background
     ctx.fillStyle = '#0f1720';
     ctx.fillRect(0, 0, vw, vh);
-    // road surface
     roundRect(ctx, this.left, 0, this.right - this.left, vh, 0, '#11161b');
-    // road texture - subtle gradient
+
     const g = ctx.createLinearGradient(this.center, 0, this.center, vh);
     g.addColorStop(0, 'rgba(255,255,255,0.01)');
     g.addColorStop(1, 'rgba(255,255,255,0.00)');
     ctx.fillStyle = g;
     ctx.fillRect(this.left, 0, this.right - this.left, vh);
 
-    // side rumble strips
     ctx.fillStyle = '#2b2f33';
     ctx.fillRect(this.left-10, 0, 10, vh);
     ctx.fillRect(this.right, 0, 10, vh);
-    // dashed center lines (moving)
+
     ctx.strokeStyle = '#e8eef7';
     ctx.lineWidth = 6;
     ctx.setLineDash([28, 24]);
@@ -156,12 +149,12 @@ class Road {
 /* -------- Main Game Class -------- */
 class Game {
   constructor() {
-    this.state = 'start'; // 'start' | 'running' | 'paused' | 'gameover'
+    this.state = 'start';
     this.road = new Road(this);
     this.player = new Player(this);
     this.enemies = [];
     this.spawnTimer = 0;
-    this.spawnInterval = 1100; // ms
+    this.spawnInterval = 1100;
     this.baseSpeed = 2.2;
     this.speedMultiplier = 1;
     this.score = 0;
@@ -177,7 +170,6 @@ class Game {
   }
 
   bindUI(){
-    // buttons and overlays
     this.startScreen = document.getElementById('startScreen');
     this.gameOverScreen = document.getElementById('gameOverScreen');
     this.startBtn = document.getElementById('startBtn');
@@ -199,7 +191,6 @@ class Game {
     this.restartFromOver.addEventListener('click', ()=> { this.startGame(); });
     this.backToStart.addEventListener('click', ()=> { this.showStart(); });
 
-    // keyboard
     window.addEventListener('keydown', (e)=>{
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') this.input.left = true;
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.input.right = true;
@@ -210,7 +201,6 @@ class Game {
       if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') this.input.right = false;
     });
 
-    // touch controls
     const leftTouch = document.getElementById('leftTouch');
     const rightTouch = document.getElementById('rightTouch');
 
@@ -227,7 +217,6 @@ class Game {
     rightTouch.addEventListener('touchend', (e)=>{ e.preventDefault(); setTouch('right', false); });
     rightTouch.addEventListener('touchcancel', (e)=>{ e.preventDefault(); setTouch('right', false); });
 
-    // Also allow pointerdown/mouse click for desktop touch buttons
     leftTouch.addEventListener('pointerdown', ()=> setTouch('left', true));
     leftTouch.addEventListener('pointerup', ()=> setTouch('left', false));
     rightTouch.addEventListener('pointerdown', ()=> setTouch('right', true));
@@ -235,11 +224,10 @@ class Game {
   }
 
   resize(){
-    // ensure the canvas is visually scaled and our virtual resolution is consistent
+    // resize canvas and recalculate offsets/scaling
     resizeCanvasToDisplay();
-    // update road laneWidth based on vw/vh if needed
+    // rebuild road & reset player so boundaries match virtual vw/vh
     this.road = new Road(this);
-    // adjust player clamp if necessary
     this.player = this.player || new Player(this);
     this.player.reset();
   }
@@ -281,10 +269,8 @@ class Game {
   }
 
   spawnEnemy() {
-    // spawn in one of the lane centers
     const lane = Math.floor(Math.random() * this.road.laneCount);
     const laneX = this.road.left + lane * this.road.laneWidth + (this.road.laneWidth - 46)/2;
-    // create with speed based on current multiplier
     const spd = this.baseSpeed * (1.0 + Math.random() * 0.6 + (this.score*0.02));
     const e = new Enemy(this, laneX, this.road.laneWidth, spd);
     this.enemies.push(e);
@@ -293,12 +279,10 @@ class Game {
   endGame() {
     this.state = 'gameover';
     this.player.dead = true;
-    // update high score
     if (this.score > this.highScore) {
       this.highScore = this.score;
       localStorage.setItem(STORAGE_KEY, String(this.highScore));
     }
-    // show game over overlay
     this.finalScore.textContent = this.score;
     this.finalHigh.textContent = this.highScore;
     this.gameOverScreen.classList.remove('hidden');
@@ -313,79 +297,61 @@ class Game {
     const dt = Math.min(40, now - this.lastTime);
     this.lastTime = now;
 
-    // update
     if (this.state === 'running') {
-      // pace spawn interval with difficulty
       this.spawnTimer += dt;
-      // slightly reduce interval as score grows
       const interval = Math.max(500, this.spawnInterval - (this.score * 8));
       if (this.spawnTimer > interval) {
         this.spawnTimer = 0;
         this.spawnEnemy();
       }
 
-      // calculate speed multiplier (increase gradually)
       this.speedMultiplier = 1 + Math.floor(this.score / 15) * 0.06 + Math.min(0.9, this.score * 0.002);
       const actualSpeed = this.baseSpeed * this.speedMultiplier;
 
       this.road.update(dt, actualSpeed);
       this.player.update(dt, this.input);
 
-      // update enemies
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         const e = this.enemies[i];
         e.update(dt * (actualSpeed * 0.55));
-        // collision check - AABB
         if (!this.player.dead && rectsOverlap(this.player, e)) {
           this.endGame();
         }
-        // passed check: if enemy passes the bottom and not counted
         if (!e.passed && e.y > this.player.y + this.player.height) {
           e.passed = true;
           this.score += 1;
           this.updateScoreUI();
         }
-        // remove off-screen
         if (e.y > vh + 200) this.enemies.splice(i,1);
       }
     }
 
-    // draw
     this.draw();
-
     requestAnimationFrame((t)=>this.loop(t));
   }
 
   draw() {
-    // clear & draw at virtual resolution space [0..vw],[0..vh]
-    ctx.save();
-    // scale to virtual coordinates (canvas is already set up with a transform)
-    ctx.clearRect(0,0,vw,vh);
+    // clear full device buffer first (use identity transform)
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // background & road
+    // set the transform to virtual coordinate space
+    ctx.setTransform(SCALE, 0, 0, SCALE, OFFSET_X, OFFSET_Y);
+
+    // draw scene in virtual coords
     this.road.draw(ctx);
-
-    // draw enemies behind player
     for (const e of this.enemies) e.draw(ctx);
     this.player.draw(ctx);
-
-    // UI hints overlay on canvas (not DOM)
-    // speed meter and subtle vignette
     this.drawHUD(ctx);
-
-    ctx.restore();
   }
 
   drawHUD(ctx) {
-    // speed indicator
     const speed = (this.baseSpeed * this.speedMultiplier).toFixed(1);
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
     roundRect(ctx, 12, 12, 120, 34, 10, 'rgba(0,0,0,0.28)');
     ctx.fillStyle = '#fff';
     ctx.font = '600 14px Inter, sans-serif';
     ctx.fillText('Speed: ' + speed, 22, 34);
 
-    // subtle vignette
     const g = ctx.createLinearGradient(0,0,0,vh);
     g.addColorStop(0, 'rgba(0,0,0,0.0)');
     g.addColorStop(1, 'rgba(0,0,0,0.06)');
@@ -420,24 +386,19 @@ function rectsOverlap(a, b){
 }
 
 function randomColor(){
-  // nice saturated colors for cars
   const palette = ['#ff4d6d','#ffcc00','#5eead4','#60a5fa','#a78bfa','#fb7185','#34d399'];
   return palette[Math.floor(Math.random()*palette.length)];
 }
 
 /* -------- Boot the game instance and wire DOM UI text -------- */
 const game = new Game();
-
-// ensure score UI reflects localStorage high score
 document.getElementById('highScore').textContent = game.highScore;
-
-// Add small animation/UX polish for start screen
 (function addStartScreenPolish(){
   const startWrap = document.querySelector('#startScreen .card');
-  startWrap.classList.add('fadeIn');
+  if (startWrap) startWrap.classList.add('fadeIn');
 })();
 
-/* Allow click-drag mouse lateral control on the canvas for convenience */
+/* pointer drag control mapping (maps CSS pointer to virtual coords) */
 let pointerActive = false;
 canvas.addEventListener('pointerdown', (e)=>{
   if (e.pointerType === 'mouse') {
@@ -447,11 +408,9 @@ canvas.addEventListener('pointerdown', (e)=>{
 });
 canvas.addEventListener('pointermove', (e)=>{
   if (!pointerActive) return;
-  // map pointer x in canvas CSS coords to virtual coords and steer player
   const rect = canvas.getBoundingClientRect();
   const cssX = e.clientX - rect.left;
   const virtualX = (cssX / rect.width) * vw;
-  // set player center to pointer x
   game.player.x = clamp(virtualX - game.player.width / 2, game.road.left + 8, game.road.right - game.player.width - 8);
 });
 canvas.addEventListener('pointerup', (e)=>{
@@ -461,5 +420,6 @@ canvas.addEventListener('pointerup', (e)=>{
   }
 });
 
-/* Initial resize to ensure crisp scaling */
+/* ensure canvas is resized when page loads and when orientation changes */
 window.addEventListener('load', ()=> game.resize());
+window.addEventListener('orientationchange', ()=> setTimeout(()=> game.resize(), 200));
