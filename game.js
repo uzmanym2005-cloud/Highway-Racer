@@ -108,7 +108,7 @@ class Player {
     this.height = 96;
     this.x = vw/2 - this.width/2;
     this.y = vh - this.height - 28;
-    this.speed = 7;
+    this.speed = 15;
     this.baseColor = '#20c997';
     this.dead = false;
     this.tilt = 0;
