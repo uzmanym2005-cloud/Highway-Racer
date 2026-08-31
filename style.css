@@ -1,5 +1,5 @@
 /* style.css - Highway Racer
-   Modern racing style, responsive layout and touch controls.
+   Responsive layout, centered game area and touch controls.
 */
 
 :root{
@@ -30,28 +30,31 @@ html,body{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:24px;
+  padding:16px;
 }
 
-/* Game wrapper */
+/* Game wrapper: maintain a portrait aspect ratio and fit within viewport */
 #gameWrap{
   width: min(920px, 96vw);
-  max-width: 1000px;
+  aspect-ratio: 9 / 16;           /* keeps a tall game area */
+  max-height: 96vh;
   position:relative;
   border-radius:14px;
   overflow:hidden;
   box-shadow: var(--shadow);
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  margin: auto;
+  display:block;
 }
 
-/* Canvas stretches to wrapper width while JS handles drawing resolution */
+/* Canvas fills the wrapper exactly; JS will set the pixel buffer and transform */
 #gameCanvas{
-  display:block;
   width:100%;
-  height: auto;
-  background: transparent;
-  cursor: none;
+  height:100%;
   display:block;
+  background: transparent;
+  touch-action: none; /* keep touch interactions for our controls */
+  -webkit-user-select:none;
 }
 
 /* UI overlay */
@@ -64,6 +67,7 @@ html,body{
   justify-content:space-between;
   align-items:center;
   pointer-events:none;
+  z-index: 15;
 }
 
 #scoreboard{
@@ -115,7 +119,7 @@ html,body{
   align-items:center;
   justify-content:center;
   background:linear-gradient(180deg, rgba(3,6,12,0.45), rgba(3,6,12,0.55));
-  z-index:10;
+  z-index:30;
   pointer-events:auto;
 }
 .overlay.hidden{ display:none; pointer-events:none }
@@ -143,7 +147,7 @@ html,body{
   bottom:18px;
   left:50%;
   transform:translateX(-50%);
-  width:70%;
+  width:88%;
   display:flex;
   justify-content:space-between;
   z-index:20;
@@ -166,8 +170,8 @@ html,body{
 
 /* smaller screens adjustments */
 @media (max-width:600px){
-  #gameWrap{ width:100vw; border-radius:0; height:100vh }
-  #touchControls{ width:92%; bottom:8px }
+  #gameWrap{ width:100vw; aspect-ratio: 9 / 16; border-radius:0; max-height:100vh }
+  #touchControls{ width:94%; bottom:8px }
   .card{ padding:18px }
   .card h1{ font-size:22px }
 }
